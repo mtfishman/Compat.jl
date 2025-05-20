@@ -11,13 +11,14 @@ function _compat(ex::Expr)
 
     # https://github.com/JuliaLang/julia/pull/39285
     @static if VERSION < v"1.7.0-DEV.364"
-        if Meta.isexpr(ex, :(=)) && Meta.isexpr(ex.args[1], :tuple) &&
-            Meta.isexpr(ex.args[1].args[1], :parameters)
-            
+        if Meta.isexpr(ex, :(=)) &&
+           Meta.isexpr(ex.args[1], :tuple) &&
+           Meta.isexpr(ex.args[1].args[1], :parameters)
+
             ex = _destructure_named_tuple(ex)
         end
     end
-    
+
     return Expr(ex.head, map(_compat, ex.args)...)
 end
 

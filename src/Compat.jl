@@ -14,15 +14,23 @@ include("compatmacro.jl")
 # imported from Base and so should happen before any usages of them within this module
 
 # https://github.com/JuliaLang/julia/pull/41312: `@inline`/`@noinline` annotations within a function body
-@static if !hasmethod(getfield(Base, Symbol("@inline")), (LineNumberNode,Module))
-    macro inline()   Expr(:meta, :inline)   end
-    macro noinline() Expr(:meta, :noinline) end
+@static if !hasmethod(getfield(Base, Symbol("@inline")), (LineNumberNode, Module))
+    macro inline()
+        Expr(:meta, :inline)
+    end
+    macro noinline()
+        Expr(:meta, :noinline)
+    end
 end
 
 # https://github.com/JuliaLang/julia/pull/41328: callsite annotations of inlining
 @static if !isdefined(Base, :annotate_meta_def_or_block)
-    macro inline(ex)   annotate_meta_def_or_nothing(ex, :inline)   end
-    macro noinline(ex) annotate_meta_def_or_nothing(ex, :noinline) end
+    macro inline(ex)
+        annotate_meta_def_or_nothing(ex, :inline)
+    end
+    macro noinline(ex)
+        annotate_meta_def_or_nothing(ex, :noinline)
+    end
     function annotate_meta_def_or_nothing(@nospecialize(ex), meta::Symbol)
         inner = unwrap_macrocalls(ex)
         if is_function_def(inner)
@@ -41,8 +49,9 @@ end
         end
         return inner
     end
-    is_function_def(@nospecialize(ex)) =
-        return Meta.isexpr(ex, :function) || is_short_function_def(ex) || Meta.isexpr(ex, :->)
+    is_function_def(@nospecialize(ex)) = return Meta.isexpr(ex, :function) ||
+           is_short_function_def(ex) ||
+           Meta.isexpr(ex, :->)
     function is_short_function_def(@nospecialize(ex))
         Meta.isexpr(ex, :(=)) || return false
         while length(ex.args) >= 1 && isa(ex.args[1], Expr)
@@ -73,10 +82,10 @@ if VERSION < v"1.7.0-DEV.119"
 
     isgreater(x, y) = isunordered(x) || isunordered(y) ? isless(x, y) : isless(y, x)
 
-    Base.findmax(f, domain) = mapfoldl( ((k, v),) -> (f(v), k), _rf_findmax, pairs(domain) )
+    Base.findmax(f, domain) = mapfoldl(((k, v),) -> (f(v), k), _rf_findmax, pairs(domain))
     _rf_findmax((fm, im), (fx, ix)) = isless(fm, fx) ? (fx, ix) : (fm, im)
 
-    Base.findmin(f, domain) = mapfoldl( ((k, v),) -> (f(v), k), _rf_findmin, pairs(domain) )
+    Base.findmin(f, domain) = mapfoldl(((k, v),) -> (f(v), k), _rf_findmin, pairs(domain))
     _rf_findmin((fm, im), (fx, ix)) = isgreater(fm, fx) ? (fx, ix) : (fm, im)
 
     Base.argmax(f, domain) = mapfoldl(x -> (f(x), x), _rf_findmax, domain)[2]
@@ -90,7 +99,9 @@ if VERSION < v"1.7.0-DEV.1088"
         for arg in reverse(args)
             expr = :((val = $arg) !== nothing ? val : $expr)
         end
-        return esc(:(something(let val; $expr; end)))
+        return esc(:(something(let val
+            $expr
+        end)))
     end
 
     macro coalesce(args...)
@@ -98,7 +109,11 @@ if VERSION < v"1.7.0-DEV.1088"
         for arg in reverse(args)
             expr = :((val = $arg) !== missing ? val : $expr)
         end
-        return esc(:(let val; $expr; end))
+        return esc(:(
+            let val
+                $expr
+            end
+        ))
     end
 
     export @something, @coalesce
@@ -106,12 +121,16 @@ end
 
 # https://github.com/JuliaLang/julia/pull/41007
 if VERSION < v"1.7.0-DEV.1220"
-    Base.get(f::Base.Callable, A::AbstractArray, i::Integer) = checkbounds(Bool, A, i) ? A[i] : f()
-    Base.get(f::Base.Callable, A::AbstractArray, I::Tuple{}) = checkbounds(Bool, A) ? A[] : f()
-    Base.get(f::Base.Callable, A::AbstractArray, I::Dims) = checkbounds(Bool, A, I...) ? A[I...] : f()
+    Base.get(f::Base.Callable, A::AbstractArray, i::Integer) =
+        checkbounds(Bool, A, i) ? A[i] : f()
+    Base.get(f::Base.Callable, A::AbstractArray, I::Tuple{}) =
+        checkbounds(Bool, A) ? A[] : f()
+    Base.get(f::Base.Callable, A::AbstractArray, I::Dims) =
+        checkbounds(Bool, A, I...) ? A[I...] : f()
 
     Base.get(t::Tuple, i::Integer, default) = i in 1:length(t) ? getindex(t, i) : default
-    Base.get(f::Base.Callable, t::Tuple, i::Integer) = i in 1:length(t) ? getindex(t, i) : f()
+    Base.get(f::Base.Callable, t::Tuple, i::Integer) =
+        i in 1:length(t) ? getindex(t, i) : f()
 end
 
 # https://github.com/JuliaLang/julia/pull/41032
@@ -125,11 +144,11 @@ end
 # https://github.com/JuliaLang/julia/pull/29901
 if VERSION < v"1.7.0-DEV.1106"
     struct ExceptionStack <: AbstractArray{Any,1}
-        stack
+        stack::Any
     end
 
-    function current_exceptions(task=current_task(); backtrace=true)
-        old_stack = Base.catch_stack(task, include_bt=backtrace)
+    function current_exceptions(task = current_task(); backtrace = true)
+        old_stack = Base.catch_stack(task, include_bt = backtrace)
         # If include_bt=true, Base.catch_stack yields a Vector of two-tuples,
         # where the first element of each tuple is an exception and the second
         # element is the corresponding backtrace. If instead include_bt=false,
@@ -141,9 +160,12 @@ if VERSION < v"1.7.0-DEV.1106"
         # and the second element is either a correpsonding backtrace or `nothing`.
         #
         # The following constructs the ExceptionStack-wrapped Vector appropriately.
-        new_stack = backtrace ?
-            Any[(exception=exc_and_bt[1], backtrace=exc_and_bt[2]) for exc_and_bt in old_stack] :
-            Any[(exception=exc_only,      backtrace=nothing) for exc_only in old_stack]
+        new_stack =
+            backtrace ?
+            Any[
+                (exception = exc_and_bt[1], backtrace = exc_and_bt[2]) for
+                exc_and_bt in old_stack
+            ] : Any[(exception = exc_only, backtrace = nothing) for exc_only in old_stack]
         return ExceptionStack(new_stack)
     end
 
@@ -157,20 +179,20 @@ if VERSION < v"1.7.0-DEV.1106"
         nexc = length(stack)
         for i = nexc:-1:1
             if nexc != i
-                printstyled(io, "\ncaused by: ", color=Base.error_color())
+                printstyled(io, "\ncaused by: ", color = Base.error_color())
             end
             exc, bt = stack[i]
-            showerror(io, exc, bt, backtrace = bt!==nothing)
+            showerror(io, exc, bt, backtrace = bt !== nothing)
             i == 1 || println(io)
         end
     end
 
     function Base.display_error(io::IO, stack::ExceptionStack)
-        printstyled(io, "ERROR: "; bold=true, color=Base.error_color())
+        printstyled(io, "ERROR: "; bold = true, color = Base.error_color())
         # Julia >=1.2 provides Base.scrub_repl_backtrace; we use it
         # where possible and otherwise leave backtraces unscrubbed.
         backtrace_scrubber = VERSION >= v"1.2" ? Base.scrub_repl_backtrace : identity
-        bt = Any[ (x[1], backtrace_scrubber(x[2])) for x in stack ]
+        bt = Any[(x[1], backtrace_scrubber(x[2])) for x in stack]
         show_exception_stack(IOContext(io, :limit => true), bt)
         println(io)
     end
@@ -231,7 +253,9 @@ if !isdefined(Base, Symbol("@constprop"))
             if isa(setting, QuoteNode)
                 setting = setting.value
             end
-            setting === :aggressive || setting === :none || throw(ArgumentError("@constprop $setting not supported"))
+            setting === :aggressive ||
+                setting === :none ||
+                throw(ArgumentError("@constprop $setting not supported"))
             return esc(ex)
         end
     end
@@ -241,7 +265,7 @@ end
 
 # https://github.com/JuliaLang/julia/pull/40803
 if VERSION < v"1.8.0-DEV.300"
-    function Base.convert(::Type{T}, x::CompoundPeriod) where T<:Period
+    function Base.convert(::Type{T}, x::CompoundPeriod) where {T<:Period}
         return isconcretetype(T) ? sum(T, x.periods) : throw(MethodError(convert, (T, x)))
     end
 end
@@ -288,7 +312,10 @@ if VERSION < v"1.8.0-DEV.487"
     Base.eltype(::Type{<:SplitIterator}) = SubString
     Base.IteratorSize(::Type{<:SplitIterator}) = Base.SizeUnknown()
 
-    function Base.iterate(iter::SplitIterator, (i, k, n)=(firstindex(iter.str), firstindex(iter.str), 0))
+    function Base.iterate(
+        iter::SplitIterator,
+        (i, k, n) = (firstindex(iter.str), firstindex(iter.str), 0),
+    )
         i - 1 > ncodeunits(iter.str)::Int && return nothing
         r = findnext(iter.splitter, iter.str, k)::Union{Nothing,Int,UnitRange{Int}}
         while r !== nothing && n != iter.limit - 1 && first(r) <= ncodeunits(iter.str)
@@ -310,18 +337,35 @@ if VERSION < v"1.8.0-DEV.487"
         @inbounds SubString(iter.str, i), (ncodeunits(iter.str) + 2, k, n + 1)
     end
 
-    eachsplit(str::T, splitter; limit::Integer=0, keepempty::Bool=true) where {T<:AbstractString} =
-        SplitIterator(str, splitter, limit, keepempty)
+    eachsplit(
+        str::T,
+        splitter;
+        limit::Integer = 0,
+        keepempty::Bool = true,
+    ) where {T<:AbstractString} = SplitIterator(str, splitter, limit, keepempty)
 
-    eachsplit(str::T, splitter::Union{Tuple{Vararg{AbstractChar}},AbstractVector{<:AbstractChar},Set{<:AbstractChar}};
-            limit::Integer=0, keepempty=true) where {T<:AbstractString} =
-        eachsplit(str, in(splitter); limit=limit, keepempty=keepempty)
+    eachsplit(
+        str::T,
+        splitter::Union{
+            Tuple{Vararg{AbstractChar}},
+            AbstractVector{<:AbstractChar},
+            Set{<:AbstractChar},
+        };
+        limit::Integer = 0,
+        keepempty = true,
+    ) where {T<:AbstractString} =
+        eachsplit(str, in(splitter); limit = limit, keepempty = keepempty)
 
-    eachsplit(str::T, splitter::AbstractChar; limit::Integer=0, keepempty=true) where {T<:AbstractString} =
-        eachsplit(str, isequal(splitter); limit=limit, keepempty=keepempty)
+    eachsplit(
+        str::T,
+        splitter::AbstractChar;
+        limit::Integer = 0,
+        keepempty = true,
+    ) where {T<:AbstractString} =
+        eachsplit(str, isequal(splitter); limit = limit, keepempty = keepempty)
 
-    eachsplit(str::AbstractString; limit::Integer=0, keepempty=false) =
-        eachsplit(str, isspace; limit=limit, keepempty=keepempty)
+    eachsplit(str::AbstractString; limit::Integer = 0, keepempty = false) =
+        eachsplit(str, isspace; limit = limit, keepempty = keepempty)
 end
 
 # https://github.com/JuliaLang/julia/pull/43354
@@ -389,7 +433,7 @@ end
 if VERSION < v"1.9.0-DEV.1163"
     import Base: IteratorSize, HasLength, HasShape, OneTo
     export stack
-    
+
     """
         stack(iter; [dims])
 
@@ -481,7 +525,7 @@ if VERSION < v"1.9.0-DEV.1163"
     (14, 15)
     ```
     """
-    stack(iter; dims=:) = _stack(dims, iter)
+    stack(iter; dims = :) = _stack(dims, iter)
 
     """
         stack(f, args...; [dims])
@@ -510,27 +554,33 @@ if VERSION < v"1.9.0-DEV.1163"
      4.0  5.0  6.0  400.0  500.0  600.0  0.04  0.05  0.06
     ```
     """
-    stack(f, iter; dims=:) = _stack(dims, f(x) for x in iter)
-    stack(f, xs, yzs...; dims=:) = _stack(dims, f(xy...) for xy in zip(xs, yzs...))
+    stack(f, iter; dims = :) = _stack(dims, f(x) for x in iter)
+    stack(f, xs, yzs...; dims = :) = _stack(dims, f(xy...) for xy in zip(xs, yzs...))
 
-    _stack(dims::Union{Integer, Colon}, iter) = _stack(dims, IteratorSize(iter), iter)
+    _stack(dims::Union{Integer,Colon}, iter) = _stack(dims, IteratorSize(iter), iter)
 
     _stack(dims, ::IteratorSize, iter) = _stack(dims, collect(iter))
 
-    function _stack(dims, ::Union{HasShape, HasLength}, iter)
+    function _stack(dims, ::Union{HasShape,HasLength}, iter)
         S = Base.@default_eltype iter
         T = S != Union{} ? eltype(S) : Any  # Union{} occurs for e.g. stack(1,2), postpone the error
         if isconcretetype(T)
             _typed_stack(dims, T, S, iter)
         else  # Need to look inside, but shouldn't run an expensive iterator twice:
-            array = iter isa Union{Tuple, AbstractArray} ? iter : collect(iter)
+            array = iter isa Union{Tuple,AbstractArray} ? iter : collect(iter)
             isempty(array) && return _empty_stack(dims, T, S, iter)
             T2 = mapreduce(eltype, promote_type, array)
             _typed_stack(dims, T2, eltype(array), array)
         end
     end
 
-    function _typed_stack(::Colon, ::Type{T}, ::Type{S}, A, Aax=_iterator_axes(A)) where {T, S}
+    function _typed_stack(
+        ::Colon,
+        ::Type{T},
+        ::Type{S},
+        A,
+        Aax = _iterator_axes(A),
+    ) where {T,S}
         xit = iterate(A)
         nothing === xit && return _empty_stack(:, T, S, A)
         x1, _ = xit
@@ -557,8 +607,14 @@ if VERSION < v"1.9.0-DEV.1163"
         _typed_stack(dims, T, S, IteratorSize(S), A)
     _typed_stack(dims::Integer, ::Type{T}, ::Type{S}, ::HasLength, A) where {T,S} =
         _typed_stack(dims, T, S, HasShape{1}(), A)
-    function _typed_stack(dims::Integer, ::Type{T}, ::Type{S}, ::HasShape{N}, A) where {T,S,N}
-        if dims == N+1
+    function _typed_stack(
+        dims::Integer,
+        ::Type{T},
+        ::Type{S},
+        ::HasShape{N},
+        A,
+    ) where {T,S,N}
+        if dims == N + 1
             _typed_stack(:, T, S, A, (_vec_axis(A),))
         else
             _dim_stack(dims, T, S, A)
@@ -567,18 +623,28 @@ if VERSION < v"1.9.0-DEV.1163"
     _typed_stack(dims::Integer, ::Type{T}, ::Type{S}, ::IteratorSize, A) where {T,S} =
         _dim_stack(dims, T, S, A)
 
-    _vec_axis(A, ax=_iterator_axes(A)) = length(ax) == 1 ? only(ax) : OneTo(prod(length, ax; init=1))
+    _vec_axis(A, ax = _iterator_axes(A)) =
+        length(ax) == 1 ? only(ax) : OneTo(prod(length, ax; init = 1))
 
-    @constprop :aggressive function _dim_stack(dims::Integer, ::Type{T}, ::Type{S}, A) where {T,S}
+    @constprop :aggressive function _dim_stack(
+        dims::Integer,
+        ::Type{T},
+        ::Type{S},
+        A,
+    ) where {T,S}
         xit = Iterators.peel(A)
         nothing === xit && return _empty_stack(dims, T, S, A)
         x1, xrest = xit
         ax1 = _iterator_axes(x1)
-        N1 = length(ax1)+1
-        dims in 1:N1 || throw(ArgumentError(string("cannot stack slices ndims(x) = ", N1-1, " along dims = ", dims)))
+        N1 = length(ax1) + 1
+        dims in 1:N1 || throw(
+            ArgumentError(
+                string("cannot stack slices ndims(x) = ", N1 - 1, " along dims = ", dims),
+            ),
+        )
 
         newaxis = _vec_axis(A)
-        outax = ntuple(d -> d==dims ? newaxis : ax1[d - (d>dims)], N1)
+        outax = ntuple(d -> d == dims ? newaxis : ax1[d-(d>dims)], N1)
         B = similar(_ensure_array(x1), T, outax...)
 
         if dims == 1
@@ -609,15 +675,24 @@ if VERSION < v"1.9.0-DEV.1163"
         if _iterator_axes(x) != ax1
             uax1 = map(UnitRange, ax1)
             uaxN = map(UnitRange, axes(x))
-            throw(DimensionMismatch(
-                string("stack expects uniform slices, got axes(x) == ", uaxN, " while first had ", uax1)))
+            throw(
+                DimensionMismatch(
+                    string(
+                        "stack expects uniform slices, got axes(x) == ",
+                        uaxN,
+                        " while first had ",
+                        uax1,
+                    ),
+                ),
+            )
         end
     end
 
     _ensure_array(x::AbstractArray) = x
     _ensure_array(x) = 1:0  # passed to similar, makes stack's output an Array
 
-    _empty_stack(_...) = throw(ArgumentError("`stack` on an empty collection is not allowed"))
+    _empty_stack(_...) =
+        throw(ArgumentError("`stack` on an empty collection is not allowed"))
 end
 
 if v"1.10.0-" <= VERSION < v"1.10.0-DEV.360" || VERSION < v"1.9.0-beta3"
@@ -643,35 +718,39 @@ end
 
 # https://github.com/JuliaLang/julia/pull/25085
 if VERSION < v"1.8.0-beta2.17" || v"1.9.0-" <= VERSION < v"1.9.0-DEV.94"
-    Base.trunc(::Type{Bool}, x::AbstractFloat) = (-1 < x < 2) ? 1 <= x : throw(InexactError(:trunc, Bool, x))
-    Base.floor(::Type{Bool}, x::AbstractFloat) = (0 <= x < 2) ? 1 <= x : throw(InexactError(:floor, Bool, x))
-    Base.ceil(::Type{Bool}, x::AbstractFloat)  = (-1 < x <= 1) ? 0 < x : throw(InexactError(:ceil, Bool, x))
-    Base.round(::Type{Bool}, x::AbstractFloat) = (-0.5 <= x < 1.5) ? 0.5 < x : throw(InexactError(:round, Bool, x))
+    Base.trunc(::Type{Bool}, x::AbstractFloat) =
+        (-1 < x < 2) ? 1 <= x : throw(InexactError(:trunc, Bool, x))
+    Base.floor(::Type{Bool}, x::AbstractFloat) =
+        (0 <= x < 2) ? 1 <= x : throw(InexactError(:floor, Bool, x))
+    Base.ceil(::Type{Bool}, x::AbstractFloat) =
+        (-1 < x <= 1) ? 0 < x : throw(InexactError(:ceil, Bool, x))
+    Base.round(::Type{Bool}, x::AbstractFloat) =
+        (-0.5 <= x < 1.5) ? 0.5 < x : throw(InexactError(:round, Bool, x))
 end
 
 # https://github.com/JuliaLang/julia/pull/37978
 if VERSION < v"1.7.0-DEV.1187"
-    function redirect_stdio(;stdin=nothing, stderr=nothing, stdout=nothing)
-        stdin  === nothing || redirect_stdin(stdin)
+    function redirect_stdio(; stdin = nothing, stderr = nothing, stdout = nothing)
+        stdin === nothing || redirect_stdin(stdin)
         stderr === nothing || redirect_stderr(stderr)
         stdout === nothing || redirect_stdout(stdout)
     end
-    function redirect_stdio(f; stdin=nothing, stderr=nothing, stdout=nothing)
+    function redirect_stdio(f; stdin = nothing, stderr = nothing, stdout = nothing)
 
         function resolve(new::Nothing, oldstream, mode)
-            (new=nothing, close=false, old=nothing)
+            (new = nothing, close = false, old = nothing)
         end
-        function resolve(path::AbstractString, oldstream,mode)
-            (new=open(path, mode), close=true, old=oldstream)
+        function resolve(path::AbstractString, oldstream, mode)
+            (new = open(path, mode), close = true, old = oldstream)
         end
         function resolve(new, oldstream, mode)
-            (new=new, close=false, old=oldstream)
+            (new = new, close = false, old = oldstream)
         end
 
         same_path(x, y) = false
         function same_path(x::AbstractString, y::AbstractString)
             # if x = y = "does_not_yet_exist.txt" then samefile will return false
-            (abspath(x) == abspath(y)) || Base.Filesystem.samefile(x,y)
+            (abspath(x) == abspath(y)) || Base.Filesystem.samefile(x, y)
         end
         if same_path(stderr, stdin)
             throw(ArgumentError("stdin and stderr cannot be the same path"))
@@ -680,7 +759,7 @@ if VERSION < v"1.7.0-DEV.1187"
             throw(ArgumentError("stdin and stdout cannot be the same path"))
         end
 
-        new_in , close_in , old_in  = resolve(stdin , Base.stdin , "r")
+        new_in, close_in, old_in = resolve(stdin, Base.stdin, "r")
         new_out, close_out, old_out = resolve(stdout, Base.stdout, "w")
         if same_path(stderr, stdout)
             # make sure that in case stderr = stdout = "same/path"
@@ -690,14 +769,14 @@ if VERSION < v"1.7.0-DEV.1187"
             new_err, close_err, old_err = resolve(stderr, Base.stderr, "w")
         end
 
-        redirect_stdio(; stderr=new_err, stdin=new_in, stdout=new_out)
+        redirect_stdio(; stderr = new_err, stdin = new_in, stdout = new_out)
 
         try
             return f()
         finally
-            redirect_stdio(;stderr=old_err, stdin=old_in, stdout=old_out)
+            redirect_stdio(; stderr = old_err, stdin = old_in, stdout = old_out)
             close_err && close(new_err)
-            close_in  && close(new_in )
+            close_in && close(new_in)
             close_out && close(new_out)
         end
     end
@@ -707,11 +786,22 @@ end
 
 # https://github.com/JuliaLang/julia/pull/46104
 if VERSION < v"1.10.0-DEV.1404"
-    using Base: Ordering, Forward, ord, lt, tail, copymutable, DEFAULT_STABLE, IteratorSize, HasShape, IsInfinite
+    using Base:
+        Ordering,
+        Forward,
+        ord,
+        lt,
+        tail,
+        copymutable,
+        DEFAULT_STABLE,
+        IteratorSize,
+        HasShape,
+        IsInfinite
     function Base.sort(v; kws...)
         size = IteratorSize(v)
         size == HasShape{0}() && throw(ArgumentError("$v cannot be sorted"))
-        size == IsInfinite() && throw(ArgumentError("infinite iterator $v cannot be sorted"))
+        size == IsInfinite() &&
+            throw(ArgumentError("infinite iterator $v cannot be sorted"))
         sort!(copymutable(v); kws...)
     end
     Base.sort(::AbstractString; kws...) =
@@ -719,26 +809,33 @@ if VERSION < v"1.10.0-DEV.1404"
     Base.sort(::Tuple; kws...) =
         throw(ArgumentError("sort(::Tuple) is only supported for NTuples"))
 
-    function Base.sort(x::NTuple{N}; lt::Function=isless, by::Function=identity,
-                  rev::Union{Bool,Nothing}=nothing, order::Ordering=Forward) where N
-        o = ord(lt,by,rev,order)
+    function Base.sort(
+        x::NTuple{N};
+        lt::Function = isless,
+        by::Function = identity,
+        rev::Union{Bool,Nothing} = nothing,
+        order::Ordering = Forward,
+    ) where {N}
+        o = ord(lt, by, rev, order)
         if N > 9
             v = sort!(copymutable(x), DEFAULT_STABLE, o)
-            tuple((v[i] for i in 1:N)...)
+            tuple((v[i] for i = 1:N)...)
         else
             _sort(x, o)
         end
     end
-    _sort(x::Union{NTuple{0}, NTuple{1}}, o::Ordering) = x
+    _sort(x::Union{NTuple{0},NTuple{1}}, o::Ordering) = x
     function _sort(x::NTuple, o::Ordering)
-        a, b = Base.IteratorsMD.split(x, Val(length(x)>>1))
+        a, b = Base.IteratorsMD.split(x, Val(length(x) >> 1))
         merge(_sort(a, o), _sort(b, o), o)
     end
     merge(x::NTuple, y::NTuple{0}, o::Ordering) = x
     merge(x::NTuple{0}, y::NTuple, o::Ordering) = y
     merge(x::NTuple{0}, y::NTuple{0}, o::Ordering) = x # Method ambiguity
-    merge(x::NTuple, y::NTuple, o::Ordering) =
-        (lt(o, y[1], x[1]) ? (y[1], merge(x, tail(y), o)...) : (x[1], merge(tail(x), y, o)...))
+    merge(x::NTuple, y::NTuple, o::Ordering) = (
+        lt(o, y[1], x[1]) ? (y[1], merge(x, tail(y), o)...) :
+        (x[1], merge(tail(x), y, o)...)
+    )
 end
 
 include("deprecated.jl")

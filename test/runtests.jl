@@ -7,16 +7,17 @@ using Test
 begin
     # A custom linear slow sparse-like array that relies upon Dict for its storage
     struct TSlow{T,N} <: AbstractArray{T,N}
-        data::Dict{NTuple{N,Int}, T}
+        data::Dict{NTuple{N,Int},T}
         dims::NTuple{N,Int}
     end
     TSlow(::Type{T}, dims::Int...) where {T} = TSlow(T, dims)
-    TSlow(::Type{T}, dims::NTuple{N,Int}) where {T,N} = TSlow{T,N}(Dict{NTuple{N,Int}, T}(), dims)
+    TSlow(::Type{T}, dims::NTuple{N,Int}) where {T,N} =
+        TSlow{T,N}(Dict{NTuple{N,Int},T}(), dims)
 
-    TSlow{T,N}(X::TSlow{T,N})         where {T,N  } = X
-    TSlow(     X::AbstractArray{T,N}) where {T,N  } = TSlow{T,N}(X)
-    TSlow{T  }(X::AbstractArray{_,N}) where {T,N,_} = TSlow{T,N}(X)
-    TSlow{T,N}(X::AbstractArray     ) where {T,N  } = begin
+    TSlow{T,N}(X::TSlow{T,N}) where {T,N} = X
+    TSlow(X::AbstractArray{T,N}) where {T,N} = TSlow{T,N}(X)
+    TSlow{T}(X::AbstractArray{_,N}) where {T,N,_} = TSlow{T,N}(X)
+    TSlow{T,N}(X::AbstractArray) where {T,N} = begin
         A = TSlow(T, size(X))
         for I in CartesianIndices(X)
             A[Tuple(I)...] = X[Tuple(I)...]
@@ -86,62 +87,62 @@ end
 end
 
 @testset "get" begin
-     A = reshape([1:24...], 4, 3, 2)
-     B = reshape([1:24...], 4, 3, 2)
+    A = reshape([1:24...], 4, 3, 2)
+    B = reshape([1:24...], 4, 3, 2)
 
-     global c = 0
-     f() = (global c = c+1; 0)
-     @test get(f, A, ()) == 0
-     @test c == 1
-     @test get(f, B, ()) == 0
-     @test c == 2
-     @test get(f, A, (1,)) == get(f, A, 1) == A[1] == 1
-     @test c == 2
-     @test get(f, B, (1,)) == get(f, B, 1) == B[1] == 1
-     @test c == 2
-     @test get(f, A, (25,)) == get(f, A, 25) == 0
-     @test c == 4
-     @test get(f, B, (25,)) == get(f, B, 25) == 0
-     @test c == 6
-     @test get(f, A, (1,1,1)) == A[1,1,1] == 1
-     @test get(f, B, (1,1,1)) == B[1,1,1] == 1
-     @test get(f, A, (1,1,3)) == 0
-     @test c == 7
-     @test get(f, B, (1,1,3)) == 0
-     @test c == 8
-     @test get(f, TSlow([]), ()) == 0
-     @test c == 9
+    global c = 0
+    f() = (global c = c + 1; 0)
+    @test get(f, A, ()) == 0
+    @test c == 1
+    @test get(f, B, ()) == 0
+    @test c == 2
+    @test get(f, A, (1,)) == get(f, A, 1) == A[1] == 1
+    @test c == 2
+    @test get(f, B, (1,)) == get(f, B, 1) == B[1] == 1
+    @test c == 2
+    @test get(f, A, (25,)) == get(f, A, 25) == 0
+    @test c == 4
+    @test get(f, B, (25,)) == get(f, B, 25) == 0
+    @test c == 6
+    @test get(f, A, (1, 1, 1)) == A[1, 1, 1] == 1
+    @test get(f, B, (1, 1, 1)) == B[1, 1, 1] == 1
+    @test get(f, A, (1, 1, 3)) == 0
+    @test c == 7
+    @test get(f, B, (1, 1, 3)) == 0
+    @test c == 8
+    @test get(f, TSlow([]), ()) == 0
+    @test c == 9
 
-     @test get((5, 6, 7), 1, 0) == 5
-     @test get((), 5, 0) == 0
-     @test get((1,), 3, 0) == 0
-     @test get(()->0, (5, 6, 7), 1) == 5
-     @test get(()->0, (), 4) == 0
-     @test get(()->0, (1,), 3) == 0
+    @test get((5, 6, 7), 1, 0) == 5
+    @test get((), 5, 0) == 0
+    @test get((1,), 3, 0) == 0
+    @test get(() -> 0, (5, 6, 7), 1) == 5
+    @test get(() -> 0, (), 4) == 0
+    @test get(() -> 0, (1,), 3) == 0
 
-    for x in [1.23, 7, ℯ, 4//5] #[FP, Int, Irrational, Rat]
-         @test get(x, 1, 99) == x
-         @test get(x, (), 99) == x
-         @test get(x, (1,), 99) == x
-         @test get(x, 2, 99) == 99
-         @test get(x, 0, pi) == pi
-         @test get(x, (1,2), pi) == pi
-         c = Ref(0)
-         @test get(() -> c[]+=1, x, 1) == x
-         @test get(() -> c[]+=1, x, ()) == x
-         @test get(() -> c[]+=1, x, (1,1,1)) == x
-         @test get(() -> c[]+=1, x, 2) == 1
-         @test get(() -> c[]+=1, x, -1) == 2
-         @test get(() -> c[]+=1, x, (3,2,1)) == 3
+    for x in [1.23, 7, ℯ, 4 // 5] #[FP, Int, Irrational, Rat]
+        @test get(x, 1, 99) == x
+        @test get(x, (), 99) == x
+        @test get(x, (1,), 99) == x
+        @test get(x, 2, 99) == 99
+        @test get(x, 0, pi) == pi
+        @test get(x, (1, 2), pi) == pi
+        c = Ref(0)
+        @test get(() -> c[] += 1, x, 1) == x
+        @test get(() -> c[] += 1, x, ()) == x
+        @test get(() -> c[] += 1, x, (1, 1, 1)) == x
+        @test get(() -> c[] += 1, x, 2) == 1
+        @test get(() -> c[] += 1, x, -1) == 2
+        @test get(() -> c[] += 1, x, (3, 2, 1)) == 3
     end
 end
 
 # https://github.com/JuliaLang/julia/pull/39285
 struct X
-    x
+    x::Any
 end
 @testset "property destructuring assignment" begin
-    nt = (; a=1, b=2, c=3)
+    nt = (; a = 1, b = 2, c = 3)
     @compat (; c, b) = nt
     @test c == nt.c
     @test b == nt.b
@@ -154,7 +155,7 @@ end
 @testset "current_exceptions" begin
     # Helper method to retrieve an ExceptionStack that should contain two exceptions,
     # each of which accompanied by a backtrace or `nothing` according to `with_backtraces`.
-    function _retrieve_exception_stack(;with_backtraces::Bool)
+    function _retrieve_exception_stack(; with_backtraces::Bool)
         exception_stack = try
             try
                 # Generate the first exception:
@@ -167,7 +168,7 @@ end
         catch
             # Retrieve an ExceptionStack with both exceptions,
             # and bind `exception_stack` (at the top of this block) thereto:
-            current_exceptions(;backtrace=with_backtraces)
+            current_exceptions(; backtrace = with_backtraces)
         end
         return exception_stack
     end
@@ -176,7 +177,7 @@ end
     excs_sans_bts = _retrieve_exception_stack(with_backtraces = false)
 
     # Check that the ExceptionStack with backtraces contains backtraces:
-    BACKTRACE_TYPE = Vector{Union{Ptr{Nothing}, Base.InterpreterIP}}
+    BACKTRACE_TYPE = Vector{Union{Ptr{Nothing},Base.InterpreterIP}}
     @test all(exc_with_bt[2] isa BACKTRACE_TYPE for exc_with_bt in excs_with_bts)
 
     # Check that the ExceptionStack without backtraces contains `nothing`s:
@@ -187,51 +188,61 @@ end
     @test typeof.(first.(excs_sans_bts)) == [UndefVarError, DivideError]
 
     # Check that the ExceptionStack with backtraces `show`s correctly:
-    @test occursin(r"""
-    2-element ExceptionStack:
-    DivideError: integer division error
-    Stacktrace:.*
+    @test occursin(
+        r"""
+2-element ExceptionStack:
+DivideError: integer division error
+Stacktrace:.*
 
-    caused by: UndefVarError: `?__not_a_binding__`? not defined
-    Stacktrace:.*
-    """s, sprint(show, excs_with_bts))
+caused by: UndefVarError: `?__not_a_binding__`? not defined
+Stacktrace:.*
+"""s,
+        sprint(show, excs_with_bts),
+    )
 
     # Check that the ExceptionStack without backtraces `show`s correctly:
-    @test occursin(r"""
-    2-element ExceptionStack:
-    DivideError: integer division error
+    @test occursin(
+        r"""
+2-element ExceptionStack:
+DivideError: integer division error
 
-    caused by: UndefVarError: `?__not_a_binding__`? not defined"""s,
-    sprint(show, excs_sans_bts))
+caused by: UndefVarError: `?__not_a_binding__`? not defined"""s,
+        sprint(show, excs_sans_bts),
+    )
 
     # Check that the ExceptionStack with backtraces `display_error`s correctly:
-    @test occursin(r"""
-    ERROR: DivideError: integer division error
-    Stacktrace:.*
+    @test occursin(
+        r"""
+ERROR: DivideError: integer division error
+Stacktrace:.*
 
-    caused by: UndefVarError: `?__not_a_binding__`? not defined
-    Stacktrace:.*
-    """s, sprint(Base.display_error, excs_with_bts))
+caused by: UndefVarError: `?__not_a_binding__`? not defined
+Stacktrace:.*
+"""s,
+        sprint(Base.display_error, excs_with_bts),
+    )
 
     # Check that the ExceptionStack without backtraces `display_error`s correctly:
-    @test occursin(r"""
-    ERROR: DivideError: integer division error
+    @test occursin(
+        r"""
+ERROR: DivideError: integer division error
 
-    caused by: UndefVarError: `?__not_a_binding__`? not defined"""s,
-    sprint(Base.display_error, excs_sans_bts))
+caused by: UndefVarError: `?__not_a_binding__`? not defined"""s,
+        sprint(Base.display_error, excs_sans_bts),
+    )
 end
 
 # https://github.com/JuliaLang/julia/pull/39794
 @testset "Returns" begin
-    @test @inferred(Returns(1)()   ) === 1
-    @test @inferred(Returns(1)(23) ) === 1
-    @test @inferred(Returns("a")(2,3)) == "a"
-    @test @inferred(Returns(1)(x=1, y=2)) === 1
+    @test @inferred(Returns(1)()) === 1
+    @test @inferred(Returns(1)(23)) === 1
+    @test @inferred(Returns("a")(2, 3)) == "a"
+    @test @inferred(Returns(1)(x = 1, y = 2)) === 1
     @test @inferred(Returns(Int)()) === Int
     @test @inferred(Returns(Returns(1))()) === Returns(1)
     f = @inferred Returns(Int)
-    @inferred f(1,2)
-    val = [1,2,3]
+    @inferred f(1, 2)
+    val = [1, 2, 3]
     @test Returns(val)(1) === val
     @test sprint(show, Returns(1.0)) == "Returns{Float64}(1.0)"
 end
@@ -248,11 +259,12 @@ end
 # https://github.com/JuliaLang/julia/pull/42125
 @testset "@constprop" begin
     Compat.@constprop :aggressive aggf(x) = Symbol(x)
-    Compat.@constprop :none      nonef(x) = Symbol(x)
-    @test_throws Exception Meta.lower(@__MODULE__,
+    Compat.@constprop :none nonef(x) = Symbol(x)
+    @test_throws Exception Meta.lower(
+        @__MODULE__,
         quote
             Compat.@constprop :other brokenf(x) = Symbol(x)
-        end
+        end,
     )
     @test aggf("hi") == nonef("hi") == :hi
 end
@@ -265,19 +277,21 @@ end
         sum(sincos(a))
     end
     foo2(a) = (Compat.@inline; sum(sincos(a)))
-    foo3(a) = callf(a) do a
-        Compat.@inline
-        sum(sincos(a))
-    end
+    foo3(a) =
+        callf(a) do a
+            Compat.@inline
+            sum(sincos(a))
+        end
     function foo4(a)
         Compat.@noinline
         sum(sincos(a))
     end
     foo5(a) = (Compat.@noinline; sum(sincos(a)))
-    foo6(a) = callf(a) do a
-        Compat.@noinline
-        sum(sincos(a))
-    end
+    foo6(a) =
+        callf(a) do a
+            Compat.@noinline
+            sum(sincos(a))
+        end
 
     @test foo1(42) == foo2(42) == foo3(42) == foo4(42) == foo5(42) == foo6(42)
 end
@@ -329,64 +343,71 @@ so, these are the Base.split tests, but replacing split with eachsplit |> collec
 =#
 @testset "eachsplit" begin
     @test eachsplit("foo,bar,baz", 'x') |> collect == ["foo,bar,baz"]
-    @test eachsplit("foo,bar,baz", ',') |> collect == ["foo","bar","baz"]
-    @test eachsplit("foo,bar,baz", ",") |> collect == ["foo","bar","baz"]
-    @test eachsplit("foo,bar,baz", r",") |> collect == ["foo","bar","baz"]
-    @test eachsplit("foo,bar,baz", ','; limit=0) |> collect == ["foo","bar","baz"]
-    @test eachsplit("foo,bar,baz", ','; limit=1) |> collect == ["foo,bar,baz"]
-    @test eachsplit("foo,bar,baz", ','; limit=2) |> collect == ["foo","bar,baz"]
-    @test eachsplit("foo,bar,baz", ','; limit=3) |> collect == ["foo","bar","baz"]
-    @test eachsplit("foo,bar", "o,b") |> collect == ["fo","ar"]
+    @test eachsplit("foo,bar,baz", ',') |> collect == ["foo", "bar", "baz"]
+    @test eachsplit("foo,bar,baz", ",") |> collect == ["foo", "bar", "baz"]
+    @test eachsplit("foo,bar,baz", r",") |> collect == ["foo", "bar", "baz"]
+    @test eachsplit("foo,bar,baz", ','; limit = 0) |> collect == ["foo", "bar", "baz"]
+    @test eachsplit("foo,bar,baz", ','; limit = 1) |> collect == ["foo,bar,baz"]
+    @test eachsplit("foo,bar,baz", ','; limit = 2) |> collect == ["foo", "bar,baz"]
+    @test eachsplit("foo,bar,baz", ','; limit = 3) |> collect == ["foo", "bar", "baz"]
+    @test eachsplit("foo,bar", "o,b") |> collect == ["fo", "ar"]
 
     @test eachsplit("", ',') |> collect == [""]
-    @test eachsplit(",", ',') |> collect == ["",""]
-    @test eachsplit(",,", ',') |> collect == ["","",""]
-    @test eachsplit("", ','  ; keepempty=false) |> collect == SubString[]
-    @test eachsplit(",", ',' ; keepempty=false) |> collect == SubString[]
-    @test eachsplit(",,", ','; keepempty=false) |> collect == SubString[]
+    @test eachsplit(",", ',') |> collect == ["", ""]
+    @test eachsplit(",,", ',') |> collect == ["", "", ""]
+    @test eachsplit("", ','; keepempty = false) |> collect == SubString[]
+    @test eachsplit(",", ','; keepempty = false) |> collect == SubString[]
+    @test eachsplit(",,", ','; keepempty = false) |> collect == SubString[]
 
-    @test eachsplit("a b c") |> collect == ["a","b","c"]
-    @test eachsplit("a  b \t c\n") |> collect == ["a","b","c"]
-    @test eachsplit("α  β \u2009 γ\n") |> collect == ["α","β","γ"]
+    @test eachsplit("a b c") |> collect == ["a", "b", "c"]
+    @test eachsplit("a  b \t c\n") |> collect == ["a", "b", "c"]
+    @test eachsplit("α  β \u2009 γ\n") |> collect == ["α", "β", "γ"]
 
-    @test eachsplit("a b c"; limit=2) |> collect == ["a","b c"]
-    @test eachsplit("a  b \t c\n"; limit=3) |> collect == ["a","b","\t c\n"]
-    @test eachsplit("a b c"; keepempty=true) |> collect == ["a","b","c"]
-    @test eachsplit("a  b \t c\n"; keepempty=true) |> collect == ["a","","b","","","c",""]
+    @test eachsplit("a b c"; limit = 2) |> collect == ["a", "b c"]
+    @test eachsplit("a  b \t c\n"; limit = 3) |> collect == ["a", "b", "\t c\n"]
+    @test eachsplit("a b c"; keepempty = true) |> collect == ["a", "b", "c"]
+    @test eachsplit("a  b \t c\n"; keepempty = true) |> collect ==
+          ["a", "", "b", "", "", "c", ""]
 
     let str = "a.:.ba..:..cba.:.:.dcba.:."
-        @test eachsplit(str, ".:.") |> collect == ["a","ba.",".cba",":.dcba",""]
-        @test eachsplit(str, ".:."; keepempty=false) |> collect == ["a","ba.",".cba",":.dcba"]
-        @test eachsplit(str, ".:.") |> collect == ["a","ba.",".cba",":.dcba",""]
-        @test eachsplit(str, r"\.(:\.)+") |> collect == ["a","ba.",".cba","dcba",""]
-        @test eachsplit(str, r"\.(:\.)+"; keepempty=false) |> collect == ["a","ba.",".cba","dcba"]
-        @test eachsplit(str, r"\.+:\.+") |> collect == ["a","ba","cba",":.dcba",""]
-        @test eachsplit(str, r"\.+:\.+"; keepempty=false) |> collect == ["a","ba","cba",":.dcba"]
+        @test eachsplit(str, ".:.") |> collect == ["a", "ba.", ".cba", ":.dcba", ""]
+        @test eachsplit(str, ".:."; keepempty = false) |> collect ==
+              ["a", "ba.", ".cba", ":.dcba"]
+        @test eachsplit(str, ".:.") |> collect == ["a", "ba.", ".cba", ":.dcba", ""]
+        @test eachsplit(str, r"\.(:\.)+") |> collect == ["a", "ba.", ".cba", "dcba", ""]
+        @test eachsplit(str, r"\.(:\.)+"; keepempty = false) |> collect ==
+              ["a", "ba.", ".cba", "dcba"]
+        @test eachsplit(str, r"\.+:\.+") |> collect == ["a", "ba", "cba", ":.dcba", ""]
+        @test eachsplit(str, r"\.+:\.+"; keepempty = false) |> collect ==
+              ["a", "ba", "cba", ":.dcba"]
     end
 
     # zero-width splits
     @test eachsplit("", "") |> collect == rsplit("", "") == [""]
-    @test eachsplit("abc", "") |> collect == rsplit("abc", "") == ["a","b","c"]
-    @test eachsplit("abc", "", limit=2)  |> collect == ["a","bc"]
+    @test eachsplit("abc", "") |> collect == rsplit("abc", "") == ["a", "b", "c"]
+    @test eachsplit("abc", "", limit = 2) |> collect == ["a", "bc"]
 
-    @test eachsplit("", r"")  |> collect == [""]
-    @test eachsplit("abc", r"") |> collect == ["a","b","c"]
-    @test eachsplit("abcd", r"b?") |> collect == ["a","c","d"]
-    @test eachsplit("abcd", r"b*") |> collect == ["a","c","d"]
-    @test eachsplit("abcd", r"b+") |> collect == ["a","cd"]
-    @test eachsplit("abcd", r"b?c?") |> collect == ["a","d"]
-    @test eachsplit("abcd", r"[bc]?") |> collect == ["a","","d"]
-    @test eachsplit("abcd", r"a*") |> collect == ["","b","c","d"]
-    @test eachsplit("abcd", r"a+") |> collect == ["","bcd"]
-    @test eachsplit("abcd", r"d*") |> collect == ["a","b","c",""]
-    @test eachsplit("abcd", r"d+") |> collect == ["abc",""]
-    @test eachsplit("abcd", r"[ad]?") |> collect == ["","b","c",""]
+    @test eachsplit("", r"") |> collect == [""]
+    @test eachsplit("abc", r"") |> collect == ["a", "b", "c"]
+    @test eachsplit("abcd", r"b?") |> collect == ["a", "c", "d"]
+    @test eachsplit("abcd", r"b*") |> collect == ["a", "c", "d"]
+    @test eachsplit("abcd", r"b+") |> collect == ["a", "cd"]
+    @test eachsplit("abcd", r"b?c?") |> collect == ["a", "d"]
+    @test eachsplit("abcd", r"[bc]?") |> collect == ["a", "", "d"]
+    @test eachsplit("abcd", r"a*") |> collect == ["", "b", "c", "d"]
+    @test eachsplit("abcd", r"a+") |> collect == ["", "bcd"]
+    @test eachsplit("abcd", r"d*") |> collect == ["a", "b", "c", ""]
+    @test eachsplit("abcd", r"d+") |> collect == ["abc", ""]
+    @test eachsplit("abcd", r"[ad]?") |> collect == ["", "b", "c", ""]
 
     # multi-byte unicode characters (issue #26225)
-    @test eachsplit("α β γ", " ") |> collect == rsplit("α β γ", " ") ==
-        eachsplit("α β γ", isspace) |> collect == rsplit("α β γ", isspace) == ["α","β","γ"]
-    @test eachsplit("ö.", ".") |> collect == rsplit("ö.", ".") == ["ö",""]
-    @test eachsplit("α β γ", "β") |> collect == rsplit("α β γ", "β") == ["α "," γ"]
+    @test eachsplit("α β γ", " ") |> collect ==
+          rsplit("α β γ", " ") ==
+          eachsplit("α β γ", isspace) |> collect ==
+          rsplit("α β γ", isspace) ==
+          ["α", "β", "γ"]
+    @test eachsplit("ö.", ".") |> collect == rsplit("ö.", ".") == ["ö", ""]
+    @test eachsplit("α β γ", "β") |> collect == rsplit("α β γ", "β") == ["α ", " γ"]
 end
 
 # https://github.com/JuliaLang/julia/pull/43354
@@ -460,11 +481,17 @@ end
 # https://github.com/JuliaLang/julia/pull/43334
 @testset "stack" begin
     # Basics
-    for args in ([[1, 2]], [1:2, 3:4], [[1 2; 3 4], [5 6; 7 8]],
-                AbstractVector[1:2, [3.5, 4.5]], Vector[[1,2], [3im, 4im]],
-                [[1:2, 3:4], [5:6, 7:8]], [fill(1), fill(2)])
+    for args in (
+        [[1, 2]],
+        [1:2, 3:4],
+        [[1 2; 3 4], [5 6; 7 8]],
+        AbstractVector[1:2, [3.5, 4.5]],
+        Vector[[1, 2], [3im, 4im]],
+        [[1:2, 3:4], [5:6, 7:8]],
+        [fill(1), fill(2)],
+    )
         X = stack(args)
-        Y = cat(args...; dims=ndims(args[1])+1)
+        Y = cat(args...; dims = ndims(args[1]) + 1)
         @test X == Y
         @test typeof(X) === typeof(Y)
 
@@ -483,60 +510,61 @@ end
     end
 
     # Higher dims
-    @test size(stack([rand(2,3) for _ in 1:4, _ in 1:5])) == (2,3,4,5)
-    @test size(stack(rand(2,3) for _ in 1:4, _ in 1:5)) == (2,3,4,5)
-    @test size(stack(rand(2,3) for _ in 1:4, _ in 1:5 if true)) == (2, 3, 20)
-    @test size(stack([rand(2,3) for _ in 1:4, _ in 1:5]; dims=1)) == (20, 2, 3)
-    @test size(stack(rand(2,3) for _ in 1:4, _ in 1:5; dims=2)) == (2, 20, 3)
+    @test size(stack([rand(2, 3) for _ = 1:4, _ = 1:5])) == (2, 3, 4, 5)
+    @test size(stack(rand(2, 3) for _ = 1:4, _ = 1:5)) == (2, 3, 4, 5)
+    @test size(stack(rand(2, 3) for _ = 1:4, _ = 1:5 if true)) == (2, 3, 20)
+    @test size(stack([rand(2, 3) for _ = 1:4, _ = 1:5]; dims = 1)) == (20, 2, 3)
+    @test size(stack(rand(2, 3) for _ = 1:4, _ = 1:5; dims = 2)) == (2, 20, 3)
 
     # Tuples
-    @test stack([(1,2), (3,4)]) == [1 3; 2 4]
-    @test stack(((1,2), (3,4))) == [1 3; 2 4]
-    @test stack(Any[(1,2), (3,4)]) == [1 3; 2 4]
-    @test stack([(1,2), (3,4)]; dims=1) == [1 2; 3 4]
-    @test stack(((1,2), (3,4)); dims=1) == [1 2; 3 4]
-    @test stack(Any[(1,2), (3,4)]; dims=1) == [1 2; 3 4]
-    @test size(@inferred stack(Iterators.product(1:3, 1:4))) == (2,3,4)
+    @test stack([(1, 2), (3, 4)]) == [1 3; 2 4]
+    @test stack(((1, 2), (3, 4))) == [1 3; 2 4]
+    @test stack(Any[(1, 2), (3, 4)]) == [1 3; 2 4]
+    @test stack([(1, 2), (3, 4)]; dims = 1) == [1 2; 3 4]
+    @test stack(((1, 2), (3, 4)); dims = 1) == [1 2; 3 4]
+    @test stack(Any[(1, 2), (3, 4)]; dims = 1) == [1 2; 3 4]
+    @test size(@inferred stack(Iterators.product(1:3, 1:4))) == (2, 3, 4)
     @test @inferred(stack([('a', 'b'), ('c', 'd')])) == ['a' 'c'; 'b' 'd']
-    @test @inferred(stack([(1,2+3im), (4, 5+6im)])) isa Matrix{Number}
+    @test @inferred(stack([(1, 2 + 3im), (4, 5 + 6im)])) isa Matrix{Number}
 
     # stack(f, iter)
     @test @inferred(stack(x -> [x, 2x], 3:5)) == [3 4 5; 6 8 10]
-    @test @inferred(stack(x -> x*x'/2, [1:2, 3:4])) == reshape([0.5, 1.0, 1.0, 2.0, 4.5, 6.0, 6.0, 8.0], 2, 2, 2)
+    @test @inferred(stack(x -> x * x' / 2, [1:2, 3:4])) ==
+          reshape([0.5, 1.0, 1.0, 2.0, 4.5, 6.0, 6.0, 8.0], 2, 2, 2)
     @test @inferred(stack(*, [1:2, 3:4], 5:6)) == [5 18; 10 24]
 
     # Iterators
-    @test stack([(a=1,b=2), (a=3,b=4)]) == [1 3; 2 4]
-    @test stack([(a=1,b=2), (c=3,d=4)]) == [1 3; 2 4]
-    @test stack([(a=1,b=2), (c=3,d=4)]; dims=1) == [1 2; 3 4]
-    @test stack([(a=1,b=2), (c=3,d=4)]; dims=2) == [1 3; 2 4]
-    @test stack((x/y for x in 1:3) for y in 4:5) == (1:3) ./ (4:5)'
-    @test stack((x/y for x in 1:3) for y in 4:5; dims=1) == (1:3)' ./ (4:5)
+    @test stack([(a = 1, b = 2), (a = 3, b = 4)]) == [1 3; 2 4]
+    @test stack([(a = 1, b = 2), (c = 3, d = 4)]) == [1 3; 2 4]
+    @test stack([(a = 1, b = 2), (c = 3, d = 4)]; dims = 1) == [1 2; 3 4]
+    @test stack([(a = 1, b = 2), (c = 3, d = 4)]; dims = 2) == [1 3; 2 4]
+    @test stack((x / y for x = 1:3) for y = 4:5) == (1:3) ./ (4:5)'
+    @test stack((x / y for x = 1:3) for y = 4:5; dims = 1) == (1:3)' ./ (4:5)
 
     # Exotic
-    ips = ((Iterators.product([i,i^2], [2i,3i,4i], 1:4)) for i in 1:5)
+    ips = ((Iterators.product([i, i^2], [2i, 3i, 4i], 1:4)) for i = 1:5)
     @test size(stack(ips)) == (2, 3, 4, 5)
-    @test stack(ips) == cat(collect.(ips)...; dims=4)
-    ips_cat2 = cat(reshape.(collect.(ips), Ref((2,1,3,4)))...; dims=2)
-    @test stack(ips; dims=2) == ips_cat2
-    @test stack(collect.(ips); dims=2) == ips_cat2
-    ips_cat3 = cat(reshape.(collect.(ips), Ref((2,3,1,4)))...; dims=3)
-    @test stack(ips; dims=3) == ips_cat3  # path for non-array accumulation on non-final dims
-    @test stack(collect, ips; dims=3) == ips_cat3  # ... and for array accumulation
-    @test stack(collect.(ips); dims=3) == ips_cat3
+    @test stack(ips) == cat(collect.(ips)...; dims = 4)
+    ips_cat2 = cat(reshape.(collect.(ips), Ref((2, 1, 3, 4)))...; dims = 2)
+    @test stack(ips; dims = 2) == ips_cat2
+    @test stack(collect.(ips); dims = 2) == ips_cat2
+    ips_cat3 = cat(reshape.(collect.(ips), Ref((2, 3, 1, 4)))...; dims = 3)
+    @test stack(ips; dims = 3) == ips_cat3  # path for non-array accumulation on non-final dims
+    @test stack(collect, ips; dims = 3) == ips_cat3  # ... and for array accumulation
+    @test stack(collect.(ips); dims = 3) == ips_cat3
 
     # Trivial, because numbers are iterable:
-    @test stack(abs2, 1:3) == [1, 4, 9] == collect(Iterators.flatten(abs2(x) for x in 1:3))
+    @test stack(abs2, 1:3) == [1, 4, 9] == collect(Iterators.flatten(abs2(x) for x = 1:3))
 
     # Allocation tests
-    xv = [rand(10) for _ in 1:100]
+    xv = [rand(10) for _ = 1:100]
     xt = Tuple.(xv)
     for dims in (1, 2, :)
         @test stack(xv; dims) == stack(xt; dims)
         @test_skip 9000 > @allocated stack(xv; dims)
         @test_skip 9000 > @allocated stack(xt; dims)
     end
-    xr = (reshape(1:1000,10,10,10) for _ = 1:1000)
+    xr = (reshape(1:1000, 10, 10, 10) for _ = 1:1000)
     for dims in (1, 2, 3, :)
         stack(xr; dims)
         @test_skip 8.1e6 > @allocated stack(xr; dims)
@@ -544,26 +572,26 @@ end
 
     # Mismatched sizes
     @test_throws DimensionMismatch stack([1:2, 1:3])
-    @test_throws DimensionMismatch stack([1:2, 1:3]; dims=1)
-    @test_throws DimensionMismatch stack([1:2, 1:3]; dims=2)
-    @test_throws DimensionMismatch stack([(1,2), (3,4,5)])
-    @test_throws DimensionMismatch stack([(1,2), (3,4,5)]; dims=1)
+    @test_throws DimensionMismatch stack([1:2, 1:3]; dims = 1)
+    @test_throws DimensionMismatch stack([1:2, 1:3]; dims = 2)
+    @test_throws DimensionMismatch stack([(1, 2), (3, 4, 5)])
+    @test_throws DimensionMismatch stack([(1, 2), (3, 4, 5)]; dims = 1)
     @test_throws DimensionMismatch stack(x for x in [1:2, 1:3])
     @test_throws DimensionMismatch stack([[5 6; 7 8], [1, 2, 3, 4]])
-    @test_throws DimensionMismatch stack([[5 6; 7 8], [1, 2, 3, 4]]; dims=1)
+    @test_throws DimensionMismatch stack([[5 6; 7 8], [1, 2, 3, 4]]; dims = 1)
     @test_throws DimensionMismatch stack(x for x in [[5 6; 7 8], [1, 2, 3, 4]])
     # Inner iterator of unknown length
-    @test_throws MethodError stack((x for x in 1:3 if true) for _ in 1:4)
-    @test_throws MethodError stack((x for x in 1:3 if true) for _ in 1:4; dims=1)
+    @test_throws MethodError stack((x for x = 1:3 if true) for _ = 1:4)
+    @test_throws MethodError stack((x for x = 1:3 if true) for _ = 1:4; dims = 1)
 
-    @test_throws ArgumentError stack([1:3, 4:6]; dims=0)
-    @test_throws ArgumentError stack([1:3, 4:6]; dims=3)
-    @test_throws ArgumentError stack(abs2, 1:3; dims=2)
+    @test_throws ArgumentError stack([1:3, 4:6]; dims = 0)
+    @test_throws ArgumentError stack([1:3, 4:6]; dims = 3)
+    @test_throws ArgumentError stack(abs2, 1:3; dims = 2)
 
     # Empty
     @test_throws ArgumentError stack(())
     @test_throws ArgumentError stack([])
-    @test_throws ArgumentError stack(x for x in 1:3 if false)
+    @test_throws ArgumentError stack(x for x = 1:3 if false)
 end
 
 @testset "promoting ops for TimePeriod" begin
@@ -579,10 +607,10 @@ end
 end
 
 @testset "splat" begin
-    @test splat(+)((1,2,3)) == 6
+    @test splat(+)((1, 2, 3)) == 6
 
     if v"1.10.0-" <= VERSION < v"1.10.0-DEV.360" ||
-        v"1.9.0-DEV.513" <= VERSION < v"1.9.0-beta3"
+       v"1.9.0-DEV.513" <= VERSION < v"1.9.0-beta3"
         # these versions of Base export Splat (which we use) but pretty-print with capital `S`
         @test repr(splat(+)) == "Splat(+)"
         @test repr(MIME"text/plain"(), splat(+)) == "Splat(+)"
@@ -644,17 +672,25 @@ end
         println(stdout, "hello from stdout")
     end
     @testset "same path for multiple streams" begin
-        @test_throws ArgumentError redirect_stdio(hello_err_out,
-                                            stdin="samepath.txt", stdout="samepath.txt")
-        @test_throws ArgumentError redirect_stdio(hello_err_out,
-                                            stdin="samepath.txt", stderr="samepath.txt")
+        @test_throws ArgumentError redirect_stdio(
+            hello_err_out,
+            stdin = "samepath.txt",
+            stdout = "samepath.txt",
+        )
+        @test_throws ArgumentError redirect_stdio(
+            hello_err_out,
+            stdin = "samepath.txt",
+            stderr = "samepath.txt",
+        )
 
-        @test_throws ArgumentError redirect_stdio(hello_err_out,
-                                            stdin=joinpath("tricky", "..", "samepath.txt"),
-                                            stderr="samepath.txt")
+        @test_throws ArgumentError redirect_stdio(
+            hello_err_out,
+            stdin = joinpath("tricky", "..", "samepath.txt"),
+            stderr = "samepath.txt",
+        )
         mktempdir() do dir
             path = joinpath(dir, "stdouterr.txt")
-            redirect_stdio(hello_err_out, stdout=path, stderr=path)
+            redirect_stdio(hello_err_out, stdout = path, stderr = path)
             @test read(path, String) == """
             hello from stderr
             hello from stdout
@@ -665,24 +701,24 @@ end
     mktempdir() do dir
         path_stdout = joinpath(dir, "stdout.txt")
         path_stderr = joinpath(dir, "stderr.txt")
-        redirect_stdio(hello_err_out, stderr=devnull, stdout=path_stdout)
+        redirect_stdio(hello_err_out, stderr = devnull, stdout = path_stdout)
         @test read(path_stdout, String) == "hello from stdout\n"
 
         open(path_stderr, "w") do ioerr
-            redirect_stdio(hello_err_out, stderr=ioerr, stdout=devnull)
+            redirect_stdio(hello_err_out, stderr = ioerr, stdout = devnull)
         end
         @test read(path_stderr, String) == "hello from stderr\n"
     end
 
     mktempdir() do dir
         path_stderr = joinpath(dir, "stderr.txt")
-        path_stdin  = joinpath(dir, "stdin.txt")
+        path_stdin = joinpath(dir, "stdin.txt")
         path_stdout = joinpath(dir, "stdout.txt")
 
         content_stderr = randstring()
         content_stdout = randstring()
 
-        redirect_stdio(stdout=path_stdout, stderr=path_stderr) do
+        redirect_stdio(stdout = path_stdout, stderr = path_stderr) do
             print(content_stdout)
             print(stderr, content_stderr)
         end
@@ -695,26 +731,26 @@ end
 # https://github.com/JuliaLang/julia/pull/46104
 @testset "sort(iterable)" begin
     function tuple_sort_test(x)
-      @test issorted(sort(x))
-      length(x) > 9 && return # length > 9 uses a vector fallback
-      @test 0 == @allocated sort(x)
+        @test issorted(sort(x))
+        length(x) > 9 && return # length > 9 uses a vector fallback
+        @test 0 == @allocated sort(x)
     end
     @testset "sort(::NTuple)" begin
-        @test sort((9,8,3,3,6,2,0,8)) == (0,2,3,3,6,8,8,9)
-        @test sort((9,8,3,3,6,2,0,8), by=x->x÷3) == (2,0,3,3,8,6,8,9)
-        for i in 1:40
+        @test sort((9, 8, 3, 3, 6, 2, 0, 8)) == (0, 2, 3, 3, 6, 8, 8, 9)
+        @test sort((9, 8, 3, 3, 6, 2, 0, 8), by = x -> x ÷ 3) == (2, 0, 3, 3, 8, 6, 8, 9)
+        for i = 1:40
             tuple_sort_test(tuple(rand(i)...))
         end
-        @test_throws ArgumentError sort((1,2,3.0))
+        @test_throws ArgumentError sort((1, 2, 3.0))
     end
     @testset "sort!(iterable)" begin
-        gen = (x % 7 + 0.1x for x in 1:50)
+        gen = (x % 7 + 0.1x for x = 1:50)
         @test sort(gen) == sort!(collect(gen))
-        gen = (x % 7 + 0.1y for x in 1:10, y in 1:5)
-        @test sort(gen; dims=1) == sort!(collect(gen); dims=1)
-        @test sort(gen; dims=2) == sort!(collect(gen); dims=2)
+        gen = (x % 7 + 0.1y for x = 1:10, y = 1:5)
+        @test sort(gen; dims = 1) == sort!(collect(gen); dims = 1)
+        @test sort(gen; dims = 2) == sort!(collect(gen); dims = 2)
 
-        @test_throws ArgumentError("dimension out of range") sort(gen; dims=3)
+        @test_throws ArgumentError("dimension out of range") sort(gen; dims = 3)
 
         @test_throws UndefKeywordError(:dims) sort(gen)
         @test_throws UndefKeywordError(:dims) sort(collect(gen))
